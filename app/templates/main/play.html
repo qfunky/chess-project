@@ -4,27 +4,6 @@
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/play.css') }}">
-    
-    <style>
-        .board-row {
-            display: flex;
-            align-items: stretch; 
-        }
-        .eval-bar {
-            width: 30px !important;
-            flex-shrink: 0 !important;
-            position: relative;
-        }
-        #evalNumber {
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            left: 0;
-            font-family: 'Courier New', Courier, monospace !important;
-            font-variant-numeric: tabular-nums;
-            z-index: 2;
-        }
-    </style>
 {% endblock %}
 
 {% block content %}

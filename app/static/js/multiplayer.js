@@ -9,6 +9,7 @@ import { PIECE_THEME, ANIM } from './modules/boardConfig.js';
 
 const code = window.__ROOM__;
 const game = new Chess();
+let sourceSquare = null;
 let myColor = null;             // 'white' | 'black' | 'spectator'
 let lastMove = null;
 let serverEnded = null;
@@ -93,21 +94,59 @@ function onDragStart(source, piece) {
     const t = game.turn();
     if ((myColor === 'white' && t !== 'w') || (myColor === 'black' && t !== 'b')) return false;
     if (piece[0] !== t) return false;
+    sourceSquare = null;
     shapes.clearUser();
     hl.legalMoves(game, source);
 }
 
-function onDrop(source, target) {
+function handleMove(source, target) {
     const move = game.move({ from: source, to: target, promotion: 'q' });
-    hl.clearAll();
-    if (move === null) { refreshHighlights(); return 'snapback'; }
+    if (move === null) { refreshHighlights(); return null; }
+    
+    // В мультиплеере мы делаем ход оптимистично и тут же откатываем, 
+    // либо просто отправляем на сервер. Здесь мы полагаемся на ответ сервера.
     const uci = move.from + move.to + (move.promotion || '');
     pendingOptimisticMove = uci;
     socket.emit('move', { code, uci });
-    game.undo();   // server is authoritative
+    game.undo(); 
+    hl.clearAll();
+    return move;
+}
+
+function onDrop(source, target) {
+    const move = handleMove(source, target);
+    if (move === null) return 'snapback';
 }
 
 function onSnapEnd() { board.position(game.fen()); refreshHighlights(); }
+
+function onSquareClick(square) {
+    if (game.game_over() || serverEnded || !myColor || myColor === 'spectator') return;
+    const t = game.turn();
+    if ((myColor === 'white' && t !== 'w') || (myColor === 'black' && t !== 'b')) return;
+
+    if (sourceSquare) {
+        if (sourceSquare === square) {
+            sourceSquare = null; refreshHighlights(); return;
+        }
+        const move = handleMove(sourceSquare, square);
+        if (move) {
+            sourceSquare = null;
+            return;
+        }
+    }
+
+    const piece = game.get(square);
+    if (piece && piece.color === game.turn()) {
+        sourceSquare = square;
+        hl.clearAll();
+        if (lastMove) hl.last(lastMove.from, lastMove.to);
+        hl.legalMoves(game, square);
+    } else {
+        sourceSquare = null;
+        refreshHighlights();
+    }
+}
 
 // ============ Server state application ============
 function applyServerState(state) {
@@ -239,6 +278,22 @@ board = Chessboard('myBoard', {
     ...ANIM,
     onDragStart, onDrop, onSnapEnd
 });
+
+// Ход по клику через делегирование
+const boardEl = document.querySelector('#myBoard');
+const handleSquareEvent = e => {
+    const square = e.target.closest('.square-55d63')?.dataset.square;
+    if (square) {
+        if (e.type === 'touchstart') {
+            e.preventDefault(); 
+            onSquareClick(square);
+        } else if (e.type === 'mousedown' && e.button === 0) {
+            onSquareClick(square);
+        }
+    }
+};
+boardEl.addEventListener('mousedown', handleSquareEvent);
+boardEl.addEventListener('touchstart', handleSquareEvent, { passive: false });
 
 shapes = new ShapeLayer(boardOverlay, () => board.orientation());
 attachRightClick(boardFrame, shapes);

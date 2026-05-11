@@ -71,6 +71,10 @@ a:hover { color: var(--accent); }
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
+@media (max-width: 600px) {
+    .nav { padding: 10px 16px; }
+    .nav-links { gap: 12px; font-size: 12px; }
+}
 [data-theme="dark"] .nav { background: rgba(23,23,26,0.82); }
 
 .brand-link {

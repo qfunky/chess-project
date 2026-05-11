@@ -27,7 +27,5 @@ export class EvalBar {
         this.fill.style.height = pct + '%';
         this.number.textContent = formatEval(a);
         this.bar.classList.toggle('advantage-black', pct < 50);
-        this.bar.classList.add('flash');
-        setTimeout(() => this.bar.classList.remove('flash'), 500);
     }
 }

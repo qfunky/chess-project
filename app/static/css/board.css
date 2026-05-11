@@ -1,7 +1,7 @@
 /* ============ Board layout ============ */
 .board-row {
     display: flex;
-    gap: 14px;
+    gap: 16px;
     align-items: stretch;
     width: 100%;
     justify-content: center;
@@ -10,11 +10,13 @@
 .board-frame {
     position: relative;
     box-shadow: var(--shadow-lg);
-    border-radius: 4px;
+    border-radius: 8px;
     background: #9c7c5a;
     width: 100%;
     max-width: 640px;
     aspect-ratio: 1;
+    overflow: hidden;
+    touch-action: none; /* Запрещает скролл при перетаскивании */
 }
 
 #myBoard { width: 100% !important; }
@@ -77,14 +79,19 @@
 
 /* eval bar */
 .eval-bar {
-    width: 16px;
+    width: 24px;
+    flex: 0 0 24px;
     background: #2a2a2e;
-    border-radius: 4px;
+    border-radius: 6px;
     overflow: hidden;
     position: relative;
     box-shadow: var(--shadow-sm);
     transition: opacity 0.3s var(--ease);
     align-self: stretch;
+    display: flex;
+    justify-content: center;
+    /* Изолируем отрисовку */
+    contain: paint;
 }
 .eval-bar .fill {
     position: absolute;
@@ -92,21 +99,23 @@
     background: #f5efe1;
     transition: height 0.5s var(--ease);
     height: 50%;
+    z-index: 1;
 }
 .eval-bar .number {
     position: absolute;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    bottom: 4px;
-    font-size: 10px;
-    font-weight: 700;
-    color: rgba(0,0,0,0.7);
+    z-index: 2;
+    font-size: 11px;
+    font-weight: 800;
     font-variant-numeric: tabular-nums;
     pointer-events: none;
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    transform: translate(-50%, -50%) rotate(180deg);
+    color: #fff;
+    mix-blend-mode: difference;
 }
-.eval-bar.advantage-black .number { color: rgba(255,255,255,0.9); top: 4px; bottom: auto; }
-.eval-bar.flash { animation: barFlash 0.5s var(--ease); }
-@keyframes barFlash { 50% { box-shadow: 0 0 0 3px var(--accent-soft); } }
 
 /* status under board */
 .status {

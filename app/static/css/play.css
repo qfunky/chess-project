@@ -2,13 +2,29 @@
 .play-grid {
     display: grid;
     grid-template-columns: 240px minmax(0, 1fr) 260px;
+    grid-template-areas: "left board right";
     gap: 18px;
     align-items: start;
 }
+.col-left { grid-area: left; }
+.board-area { grid-area: board; }
+.col-right { grid-area: right; }
+
 .play-grid > .review-section { grid-column: 1 / -1; }
 
 @media (max-width: 1100px) {
-    .play-grid { grid-template-columns: 1fr; gap: 16px; }
+    .play-grid { 
+        grid-template-columns: 1fr; 
+        grid-template-areas: 
+            "board"
+            "right"
+            "left";
+        gap: 12px; 
+    }
+    .page { padding: 8px 10px; }
+    .card { padding: 10px 12px; }
+    .clock .time { font-size: 22px; }
+    .board-area { gap: 8px; }
 }
 
 /* ============ Columns ============ */
@@ -71,6 +87,7 @@
 .clock.active .label { color: var(--bg); opacity: 0.7; }
 .clock.low .time { color: var(--bad); }
 .clock.active.low { background: var(--bad); color: #fff; border-color: var(--bad); }
+.clock.active.low .time { color: #fff; }
 .clock.active.low .label { color: #fff; opacity: 0.85; }
 
 /* ============ Live analysis card ============ */

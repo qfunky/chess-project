@@ -11,6 +11,7 @@ import { PIECE_THEME, ANIM } from './modules/boardConfig.js';
 // ============ State ============
 let game = new Chess();
 let board;
+let sourceSquare = null;
 let gameMode  = localStorage.getItem('chessMode') || 'engine';
 let userSide  = localStorage.getItem('chessSide') || 'white';
 let autoFlip  = localStorage.getItem('chessAutoFlip') === '1';
@@ -254,27 +255,62 @@ function onDragStart(source, piece) {
     } else {
         if (piece[0] !== game.turn()) return false;
     }
+    sourceSquare = null;
     shapes.clearUser();
     hl.legalMoves(game, source);
 }
 
-function onDrop(source, target) {
+function handleMove(source, target) {
     const move = game.move({ from: source, to: target, promotion: 'q' });
     hl.clearAll();
-    if (move === null) { refreshHighlights(); return 'snapback'; }
+    if (move === null) { refreshHighlights(); return null; }
     lastMove = { from: move.from, to: move.to };
     saveLocal();
     renderHistory(); updateUndoBtn(); refreshStatus(); refreshHighlights();
     clocks.setActive(game.turn() === 'w' ? 'white' : 'black');
-    if (game.game_over()) { handleGameOver(); return; }
+    if (game.game_over()) { handleGameOver(); return move; }
     if (gameMode === 'engine') setTimeout(requestEngineMove, 150);
     else {
         if (autoFlip) setTimeout(flipWithAnim, 250);
         if (analysisAllowed && (showBest || showEval)) setTimeout(requestHint, 100);
     }
+    return move;
+}
+
+function onDrop(source, target) {
+    const move = handleMove(source, target);
+    if (move === null) return 'snapback';
 }
 
 function onSnapEnd() { board.position(game.fen()); refreshHighlights(); }
+
+function onSquareClick(square) {
+    if (viewingPly !== null || game.game_over()) return;
+    if (gameMode === 'engine' && game.turn() !== userSide[0]) return;
+
+    if (sourceSquare) {
+        if (sourceSquare === square) {
+            sourceSquare = null; refreshHighlights(); return;
+        }
+        const move = handleMove(sourceSquare, square);
+        if (move) {
+            board.position(game.fen());
+            sourceSquare = null;
+            return;
+        }
+    }
+
+    const piece = game.get(square);
+    if (piece && piece.color === game.turn()) {
+        sourceSquare = square;
+        hl.clearAll();
+        if (lastMove) hl.last(lastMove.from, lastMove.to);
+        hl.legalMoves(game, square);
+    } else {
+        sourceSquare = null;
+        refreshHighlights();
+    }
+}
 
 // ============ Actions ============
 function newGame() {
@@ -465,6 +501,23 @@ board = Chessboard('myBoard', {
     ...ANIM,
     onDragStart, onDrop, onSnapEnd
 });
+
+// Ход по клику через делегирование (более отзывчиво для мобильных)
+const boardEl = document.querySelector('#myBoard');
+const handleSquareEvent = e => {
+    const square = e.target.closest('.square-55d63')?.dataset.square;
+    if (square) {
+        // Предотвращаем "двойной" запуск для touch + click
+        if (e.type === 'touchstart') {
+            e.preventDefault(); 
+            onSquareClick(square);
+        } else if (e.type === 'mousedown' && e.button === 0) {
+            onSquareClick(square);
+        }
+    }
+};
+boardEl.addEventListener('mousedown', handleSquareEvent);
+boardEl.addEventListener('touchstart', handleSquareEvent, { passive: false });
 
 updateModeUI(); renderHistory(); updateUndoBtn(); refreshStatus();
 applyTimeControl();
