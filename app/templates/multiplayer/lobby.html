@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Multiplayer{% endblock %}
+{% block css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/multiplayer.css') }}">{% endblock %}
+{% block content %}
+<div class="lobby">
+    <div class="lobby-card">
+        <h1>Play a friend online</h1>
+        <p class="muted">Pick time control, share the room link. They sign in once and join.</p>
+
+        <form method="post" action="{{ url_for('mp.create') }}">
+            <div class="form-row">
+                <label>Time control</label>
+                <select name="time_control">
+                    <option value="off">No clock</option>
+                    <option value="1+0">1 min · Bullet</option>
+                    <option value="3+0">3 min</option>
+                    <option value="3+2">3 + 2</option>
+                    <option value="5+0" selected>5 min · Blitz</option>
+                    <option value="5+3">5 + 3</option>
+                    <option value="10+0">10 min</option>
+                    <option value="10+5">10 + 5</option>
+                    <option value="15+10">15 + 10 · Rapid</option>
+                    <option value="30+0">30 min · Classical</option>
+                </select>
+            </div>
+            <div class="form-row inline">
+                <label style="margin:0">Allow live analysis</label>
+                <div class="switch on" id="analysisSwitch"><div class="knob"></div></div>
+                <input type="hidden" name="analysis_allowed" id="analysisInput" value="on">
+            </div>
+            <button class="btn-primary" type="submit">Create room</button>
+        </form>
+
+        <div class="divider"><span>or</span></div>
+
+        <form method="post" action="{{ url_for('mp.join') }}" class="lobby-join">
+            <input name="code" placeholder="Room code (e.g. AB12CD)" maxlength="6" autocomplete="off" required>
+            <button class="btn-secondary" type="submit">Join</button>
+        </form>
+    </div>
+</div>
+<script>
+(function() {
+    const sw = document.getElementById('analysisSwitch');
+    const inp = document.getElementById('analysisInput');
+    sw.addEventListener('click', () => {
+        const on = !sw.classList.contains('on');
+        sw.classList.toggle('on', on);
+        inp.value = on ? 'on' : 'off';
+    });
+})();
+</script>
+{% endblock %}

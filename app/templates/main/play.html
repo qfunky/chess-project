@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Chess · Play{% endblock %}
+{% block css %}
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/play.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="play-grid">
+    <!-- LEFT: setup / quick controls -->
+    <aside class="col-left">
+        <div class="card tight">
+            <h2>Mode</h2>
+            <div class="segmented" id="modeSelect">
+                <button data-mode="engine" class="active">Engine</button>
+                <button data-mode="friend">Friend</button>
+            </div>
+        </div>
+
+        <div class="card tight" id="sideCard">
+            <h2>Side</h2>
+            <div class="segmented" id="sideSelect">
+                <button data-side="white" class="active">White</button>
+                <button data-side="black">Black</button>
+            </div>
+        </div>
+
+        <div class="card tight">
+            <h2>Time control</h2>
+            <select id="tcSelect">
+                <option value="off">No clock</option>
+                <option value="1+0">1 min · Bullet</option>
+                <option value="3+0">3 min</option>
+                <option value="3+2">3 + 2</option>
+                <option value="5+0">5 min · Blitz</option>
+                <option value="5+3">5 + 3</option>
+                <option value="10+0">10 min</option>
+                <option value="10+5">10 + 5</option>
+                <option value="15+10">15 + 10 · Rapid</option>
+                <option value="30+0">30 min · Classical</option>
+            </select>
+        </div>
+
+        <div class="card tight">
+            <h2>Engine</h2>
+            <div class="row"><label for="skillLevel">Skill</label><span class="value"><span id="skillValue">10</span>/20</span></div>
+            <input type="range" id="skillLevel" min="0" max="20" value="10">
+            <div class="row" style="margin-top:10px"><label>Allow analysis</label><div class="switch" id="analysisAllowedSwitch"><div class="knob"></div></div></div>
+        </div>
+
+        <div class="card tight" id="liveAnalysisCard">
+            <h2>Live analysis</h2>
+            <div class="row"><label>Show evaluation</label><div class="switch" id="showEvalSwitch"><div class="knob"></div></div></div>
+            <div class="row"><label>Show best move</label><div class="switch" id="showBestSwitch"><div class="knob"></div></div></div>
+            <div class="row"><label>Auto-flip (Friend)</label><div class="switch" id="autoFlipSwitch"><div class="knob"></div></div></div>
+            <div class="analysis-box" id="analysisBox">
+                <div class="row1"><span class="eval" id="aEval">+0.00</span><span class="move" id="aMove">—</span></div>
+                <div class="pv" id="aPv"></div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- CENTER: board -->
+    <main class="board-area">
+        <div class="clocks">
+            <div class="clock" id="clockTop" style="display:none"><div class="label" id="clockTopLabel">Black</div><div class="time">5:00</div></div>
+            <div class="clock" id="clockBottom" style="display:none"><div class="label" id="clockBottomLabel">White</div><div class="time">5:00</div></div>
+        </div>
+        <div class="board-row">
+            <div class="eval-bar" id="evalBar"><div class="fill" id="evalFill"></div><div class="number" id="evalNumber">0.0</div></div>
+            {% include "partials/board.html" %}
+        </div>
+        <div id="status" class="status"><span class="dot"></span>Your move — White</div>
+    </main>
+
+    <!-- RIGHT: persistent info -->
+    <aside class="col-right">
+        <div class="card tight">
+            <div class="history-head">
+                <h2>Moves</h2>
+                <button class="live-link" id="liveLink">← Live</button>
+            </div>
+            <div id="history" class="history"></div>
+        </div>
+
+        <div class="card tight">
+            <h2>Actions</h2>
+            <div class="button-grid">
+                <button class="secondary" id="undoBtn" disabled>Undo</button>
+                <button class="secondary" id="analyzeBtn">Analyze</button>
+                <button class="secondary" id="reviewBtn" disabled>Review</button>
+                <button class="secondary" id="flipBtn">Flip</button>
+                <button class="ghost" id="savePgnBtn">Save PGN</button>
+                <button class="ghost" id="loadPgnBtn">Load PGN</button>
+            </div>
+            <input type="file" id="pgnFile" accept=".pgn,.txt" class="hidden-file">
+            <button class="primary" id="newGameBtn" style="margin-top:8px">New Game</button>
+            <div class="tip">Right-click: arrows / circles. Left-click clears.</div>
+        </div>
+    </aside>
+
+    <section class="review-section" id="reviewSection">
+        <h2>Game Review</h2>
+        <div class="review-stats" id="reviewStats"></div>
+        <svg id="evalChart" viewBox="0 0 800 180" preserveAspectRatio="none"></svg>
+    </section>
+</div>
+
+<div class="modal-backdrop" id="gameOverModal">
+    <div class="modal">
+        <div class="modal-icon" id="modalIcon">♚</div>
+        <h2 id="modalTitle">Game over</h2>
+        <p class="modal-sub" id="modalSub">—</p>
+        <div class="modal-actions">
+            <button class="secondary" id="modalReview">Review</button>
+            <button class="primary"   id="modalNew">New game</button>
+        </div>
+        <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
+    </div>
+</div>
+
+<script>window.__USER__ = {{ 'true' if current_user.is_authenticated else 'false' }};</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script type="module" src="{{ url_for('static', filename='js/play.js') }}"></script>
+{% endblock %}

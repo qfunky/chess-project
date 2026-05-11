@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chess
+  labels: { app: chess }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: chess }
+  template:
+    metadata:
+      labels: { app: chess }
+    spec:
+      containers:
+        - name: web
+          image: YOUR_REGISTRY/chess:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: SECRET_KEY
+              valueFrom: { secretKeyRef: { name: chess-secrets, key: secret-key } }
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: chess-secrets, key: database-url } }
+            - name: REDIS_URL
+              value: redis://chess-redis:6379/0
+            - name: STOCKFISH_PATH
+              value: /usr/games/stockfish
+          readinessProbe:
+            httpGet: { path: /, port: 8000 }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /, port: 8000 }
+            initialDelaySeconds: 30
+          resources:
+            requests: { cpu: 200m, memory: 256Mi }
+            limits:   { cpu: 1,    memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chess
+spec:
+  selector: { app: chess }
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chess-redis
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: chess-redis } }
+  template:
+    metadata: { labels: { app: chess-redis } }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports: [{ containerPort: 6379 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chess-redis
+spec:
+  selector: { app: chess-redis }
+  ports: [{ port: 6379, targetPort: 6379 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: chess
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "chess-session"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: chess.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: chess, port: { number: 80 } }

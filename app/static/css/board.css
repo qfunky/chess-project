@@ -1,0 +1,133 @@
+/* ============ Board layout ============ */
+.board-row {
+    display: flex;
+    gap: 14px;
+    align-items: stretch;
+    width: 100%;
+    justify-content: center;
+}
+
+.board-frame {
+    position: relative;
+    box-shadow: var(--shadow-lg);
+    border-radius: 4px;
+    background: #9c7c5a;
+    width: 100%;
+    max-width: 640px;
+    aspect-ratio: 1;
+}
+
+#myBoard { width: 100% !important; }
+
+/* Bigger boards on large screens — SVG pieces stay crisp at any size */
+@media (min-width: 1600px) { .board-frame { max-width: 720px; } }
+@media (min-width: 2000px) { .board-frame { max-width: 820px; } }
+@media (max-width: 1100px) { .board-frame { max-width: 92vw; } }
+
+/* Pieces: smooth animations on GPU layer. SVG renders crisp at any size. */
+.piece-417db {
+    z-index: 100;
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* Wood-cream squares — same in both themes so the board stays a clean focal point */
+.white-1e1d7 { background-color: #ead9b8 !important; }
+.black-3c85d { background-color: #9c7c5a !important; }
+
+.notation-322f9 { color: rgba(0,0,0,0.5) !important; font-size: 10px !important; font-family: -apple-system, sans-serif !important; }
+
+/* highlights */
+.square-55d63 { position: relative; }
+.square-55d63.highlight-legal::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(0,0,0,0.22) 16%, transparent 19%);
+    pointer-events: none;
+}
+.square-55d63.highlight-legal-capture {
+    box-shadow: inset 0 0 0 4px rgba(255, 59, 48, 0.55);
+}
+.square-55d63.highlight-last {
+    background-color: rgba(255, 207, 64, 0.45) !important;
+}
+.square-55d63.highlight-active {
+    box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+/* overlay for arrows / circles */
+.board-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 20;
+}
+
+/* flip animation */
+@keyframes flipAnim {
+    0%   { transform: perspective(900px) rotateY(0)     scale(1); opacity: 1; }
+    50%  { transform: perspective(900px) rotateY(90deg) scale(0.92); opacity: 0.4; }
+    100% { transform: perspective(900px) rotateY(0)     scale(1); opacity: 1; }
+}
+.board-frame.flipping { animation: flipAnim 0.55s var(--ease); }
+
+/* eval bar */
+.eval-bar {
+    width: 16px;
+    background: #2a2a2e;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-sm);
+    transition: opacity 0.3s var(--ease);
+    align-self: stretch;
+}
+.eval-bar .fill {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    background: #f5efe1;
+    transition: height 0.5s var(--ease);
+    height: 50%;
+}
+.eval-bar .number {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(0,0,0,0.7);
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+}
+.eval-bar.advantage-black .number { color: rgba(255,255,255,0.9); top: 4px; bottom: auto; }
+.eval-bar.flash { animation: barFlash 0.5s var(--ease); }
+@keyframes barFlash { 50% { box-shadow: 0 0 0 3px var(--accent-soft); } }
+
+/* status under board */
+.status {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+.status .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--good);
+    animation: pulse 2.2s infinite var(--ease);
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+.nav-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+.nav-controls button { padding: 8px 18px; }

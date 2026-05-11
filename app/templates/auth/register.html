@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Create account{% endblock %}
+{% block css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">{% endblock %}
+{% block content %}
+<div class="auth-card">
+    <h1>Create your account</h1>
+    <p class="muted">It takes ten seconds.</p>
+    <form method="post" class="auth-form">
+        <label>Username<input name="username" required minlength="3" maxlength="64" autocomplete="username" autofocus></label>
+        <label>Password<input name="password" type="password" required minlength="4" autocomplete="new-password"></label>
+        <button class="btn-primary" type="submit">Sign up</button>
+    </form>
+    <p class="muted small">Already have one? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+</div>
+{% endblock %}

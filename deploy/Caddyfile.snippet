@@ -1,0 +1,26 @@
+# Caddy snippet — mount the chess app at de.qfunkov.ru/chess
+# while keeping the existing landing/loading page at de.qfunkov.ru
+#
+# Add this inside your existing site block, e.g.:
+#
+# de.qfunkov.ru {
+#     # ... your existing naiveproxy / loading config ...
+#
+#     redir /chess /chess/ 308
+#
+#     handle_path /chess/* {
+#         reverse_proxy 127.0.0.1:8000 {
+#             header_up X-Forwarded-Prefix /chess
+#             header_up X-Forwarded-Proto {scheme}
+#             header_up X-Forwarded-Host  {host}
+#             header_up X-Real-IP         {remote_host}
+#             flush_interval -1
+#         }
+#     }
+# }
+#
+# Notes:
+# - `handle_path` strips `/chess` before forwarding, so Flask sees clean URLs.
+# - `X-Forwarded-Prefix` tells Flask its mount point so url_for() emits `/chess/...`.
+# - `flush_interval -1` keeps WebSocket / SocketIO streaming smooth.
+# - Reload Caddy: `sudo systemctl reload caddy`  (or `caddy reload`).

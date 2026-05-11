@@ -1,0 +1,26 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Container-internal values — NOT taken from host .env to avoid local-dev paths leaking in.
+      SECRET_KEY: ${SECRET_KEY:-dev-change-me}
+      DATABASE_URL: "sqlite:////srv/data/chess.db"
+      REDIS_URL: "redis://redis:6379/0"
+      STOCKFISH_PATH: "/usr/games/stockfish"
+    volumes:
+      - chess-data:/srv/data
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+volumes:
+  chess-data:
+  redis-data:

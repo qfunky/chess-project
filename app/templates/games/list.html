@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}My Games{% endblock %}
+{% block css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/games.css') }}">{% endblock %}
+{% block content %}
+<div class="games-container">
+    <header class="games-header">
+        <h1>My Games</h1>
+        <a href="{{ url_for('main.play') }}" class="btn-primary">New game</a>
+    </header>
+
+    {% if games %}
+    <table class="games-table">
+        <thead><tr>
+            <th>Date</th><th>Opponent</th><th>Mode</th><th>Side</th><th>Result</th><th></th>
+        </tr></thead>
+        <tbody>
+        {% for g in games %}
+            <tr class="game-row" data-id="{{ g.id }}">
+                <td>{{ g.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ g.opponent }}</td>
+                <td><span class="chip">{{ g.mode }}</span></td>
+                <td>{{ g.color }}</td>
+                <td class="result-{{ g.result|replace('/','-')|replace(' ','') }}">{{ g.result }}</td>
+                <td class="row-actions">
+                    <a href="{{ url_for('games.review', game_id=g.id) }}" class="link">Review</a>
+                    <button class="link-danger del-btn" data-id="{{ g.id }}">Delete</button>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p>You haven't played any games yet.</p>
+        <a href="{{ url_for('main.play') }}" class="btn-primary">Play your first game</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const BASE = window.__BASE__ || '';
+document.querySelectorAll('.del-btn').forEach(b => {
+  b.addEventListener('click', async () => {
+    if (!confirm('Delete this game?')) return;
+    await fetch(BASE + '/games/' + b.dataset.id, { method: 'DELETE' });
+    b.closest('tr').remove();
+  });
+});
+</script>
+{% endblock %}

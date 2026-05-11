@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Review · #{{ game.id }}{% endblock %}
+{% block css %}
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/play.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="play-grid">
+    <main class="board-area">
+        <div class="board-row">
+            <div class="eval-bar" id="evalBar"><div class="fill" id="evalFill"></div><div class="number" id="evalNumber">0.0</div></div>
+            {% include "partials/board.html" %}
+        </div>
+        <div id="status" class="status"><span class="dot"></span>{{ game.opponent }} · {{ game.result }}</div>
+        <div class="nav-controls">
+            <button class="secondary" id="firstBtn">⏮</button>
+            <button class="secondary" id="prevBtn">◀</button>
+            <button class="secondary" id="nextBtn">▶</button>
+            <button class="secondary" id="lastBtn">⏭</button>
+        </div>
+    </main>
+
+    <aside class="panel">
+        <div class="card">
+            <h2>Game info</h2>
+            <div class="row"><label>Opponent</label><span class="value">{{ game.opponent }}</span></div>
+            <div class="row"><label>Mode</label><span class="value">{{ game.mode }}</span></div>
+            <div class="row"><label>Side</label><span class="value">{{ game.color }}</span></div>
+            <div class="row"><label>Result</label><span class="value">{{ game.result }}</span></div>
+            <div class="row"><label>Played</label><span class="value">{{ game.created_at.strftime('%Y-%m-%d') }}</span></div>
+        </div>
+
+        <div class="card">
+            <h2>Moves</h2>
+            <div id="history" class="history"></div>
+        </div>
+
+        <div class="card">
+            <h2>Actions</h2>
+            <button class="primary" id="reviewBtn">Run engine review</button>
+        </div>
+    </aside>
+
+    <section class="review-section" id="reviewSection">
+        <h2>Engine Review</h2>
+        <div class="review-stats" id="reviewStats"></div>
+        <svg id="evalChart" viewBox="0 0 800 180" preserveAspectRatio="none"></svg>
+    </section>
+</div>
+
+<script>
+window.__GAME_PGN__ = {{ game.pgn|tojson }};
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script type="module" src="{{ url_for('static', filename='js/review.js') }}"></script>
+{% endblock %}

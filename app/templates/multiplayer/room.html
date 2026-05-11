@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Room {{ code }}{% endblock %}
+{% block css %}
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/play.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/multiplayer.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="play-grid">
+    <aside class="col-left">
+        <div class="card tight">
+            <h2>Room</h2>
+            <div class="room-code">
+                <span class="code-display" id="codeDisplay">{{ code }}</span>
+                <button class="ghost copy-btn" id="copyBtn">Copy link</button>
+            </div>
+            <div class="share-link"><input readonly id="shareInput" value="" autocomplete="off"></div>
+            <div class="tip">Send this link to your friend.</div>
+        </div>
+
+        <div class="card tight">
+            <h2>Players</h2>
+            <div class="player-row" id="whiteRow"><span class="seat">White</span><span class="who"><span class="conn-dot"></span><span id="whiteName">— waiting —</span></span></div>
+            <div class="player-row" id="blackRow"><span class="seat">Black</span><span class="who"><span class="conn-dot"></span><span id="blackName">— waiting —</span></span></div>
+        </div>
+
+        <div class="card tight" id="liveAnalysisCard" style="display:none">
+            <h2>Live analysis</h2>
+            <div class="row"><label>Show evaluation</label><div class="switch" id="showEvalSwitch"><div class="knob"></div></div></div>
+            <div class="row"><label>Show best move</label><div class="switch" id="showBestSwitch"><div class="knob"></div></div></div>
+            <div class="analysis-box" id="analysisBox">
+                <div class="row1"><span class="eval" id="aEval">+0.00</span><span class="move" id="aMove">—</span></div>
+                <div class="pv" id="aPv"></div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="board-area">
+        <div class="clocks">
+            <div class="clock" id="clockTop" style="display:none"><div class="label" id="clockTopLabel">Black</div><div class="time">5:00</div></div>
+            <div class="clock" id="clockBottom" style="display:none"><div class="label" id="clockBottomLabel">White</div><div class="time">5:00</div></div>
+        </div>
+        <div class="board-row">
+            <div class="eval-bar" id="evalBar" style="display:none"><div class="fill" id="evalFill"></div><div class="number" id="evalNumber">0.0</div></div>
+            {% include "partials/board.html" %}
+        </div>
+        <div id="status" class="status"><span class="dot"></span>Connecting…</div>
+    </main>
+
+    <aside class="col-right">
+        <div class="card tight">
+            <h2>Moves</h2>
+            <div id="history" class="history"></div>
+        </div>
+    </aside>
+</div>
+
+<div class="modal-backdrop" id="gameOverModal">
+    <div class="modal">
+        <div class="modal-icon" id="modalIcon">♚</div>
+        <h2 id="modalTitle">Game over</h2>
+        <p class="modal-sub" id="modalSub">—</p>
+        <div class="modal-actions">
+            <a class="primary" href="{{ url_for('games.list_games') }}">My games</a>
+        </div>
+        <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
+    </div>
+</div>
+
+<script>window.__ROOM__ = "{{ code }}";</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script type="module" src="{{ url_for('static', filename='js/multiplayer.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Chess · Home{% endblock %}
+{% block css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-inner">
+        <h1>Beautifully simple chess.</h1>
+        <p class="lede">Play Stockfish, your friend, or anyone online. Review every move with a real engine. Free.</p>
+        <div class="cta-row">
+            <a href="{{ url_for('main.play') }}" class="btn-primary">Start Playing</a>
+            {% if not current_user.is_authenticated %}
+            <a href="{{ url_for('auth.register') }}" class="btn-ghost">Create account →</a>
+            {% else %}
+            <a href="{{ url_for('mp.lobby') }}" class="btn-ghost">Play a friend online →</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="features">
+    <div class="feature">
+        <div class="icon">♞</div>
+        <h3>Solo against Stockfish</h3>
+        <p>21 skill levels, live evaluation bar, best-move hints, undo, board flip.</p>
+    </div>
+    <div class="feature">
+        <div class="icon">⚡</div>
+        <h3>Online with a friend</h3>
+        <p>Create a room, share a 6-letter code. They join with one click. Real-time moves over WebSocket.</p>
+    </div>
+    <div class="feature">
+        <div class="icon">◐</div>
+        <h3>Deep game review</h3>
+        <p>Run every move through Stockfish. See blunders, inaccuracies, and best continuations on a graph.</p>
+    </div>
+    <div class="feature">
+        <div class="icon">⌘</div>
+        <h3>Your history, always</h3>
+        <p>Sign in and every game is saved. Reopen any past game and analyze it move by move.</p>
+    </div>
+</section>
+{% endblock %}
