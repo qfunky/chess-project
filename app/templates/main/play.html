@@ -4,11 +4,31 @@
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/play.css') }}">
+    
+    <style>
+        .board-row {
+            display: flex;
+            align-items: stretch; 
+        }
+        .eval-bar {
+            width: 30px !important;
+            flex-shrink: 0 !important;
+            position: relative;
+        }
+        #evalNumber {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            left: 0;
+            font-family: 'Courier New', Courier, monospace !important;
+            font-variant-numeric: tabular-nums;
+            z-index: 2;
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
 <div class="play-grid">
-    <!-- LEFT: setup / quick controls -->
     <aside class="col-left">
         <div class="card tight">
             <h2>Mode</h2>
@@ -61,7 +81,6 @@
         </div>
     </aside>
 
-    <!-- CENTER: board -->
     <main class="board-area">
         <div class="clocks">
             <div class="clock" id="clockTop" style="display:none"><div class="label" id="clockTopLabel">Black</div><div class="time">5:00</div></div>
@@ -74,7 +93,6 @@
         <div id="status" class="status"><span class="dot"></span>Your move — White</div>
     </main>
 
-    <!-- RIGHT: persistent info -->
     <aside class="col-right">
         <div class="card tight">
             <div class="history-head">
