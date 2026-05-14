@@ -23,8 +23,10 @@ export function renderTray(container, game, byColor) {
 
     mine.sort((a, b) => (SORT_RANK[b] || 0) - (SORT_RANK[a] || 0));
 
-    // Captured pieces are the opposite color (you take theirs)
+    // Captured pieces are the opposite color (you take theirs).
+    // data-shows drives the contrasting tray frame in CSS.
     const oppColor = byColor === 'w' ? 'b' : 'w';
+    container.dataset.shows = oppColor;
 
     container.innerHTML = '';
     mine.forEach(p => {

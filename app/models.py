@@ -104,3 +104,17 @@ class Friendship(db.Model):
     addressee = db.relationship("User", foreign_keys=[addressee_id])
 
     __table_args__ = (db.UniqueConstraint("requester_id", "addressee_id", name="_friendship_uc"),)
+
+
+class GameInvite(db.Model):
+    __tablename__ = "game_invites"
+    id = db.Column(db.Integer, primary_key=True)
+    from_user_id     = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    to_user_id       = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    room_code        = db.Column(db.String(8),  nullable=False)
+    time_control     = db.Column(db.String(16))
+    analysis_allowed = db.Column(db.Boolean, default=True)
+    created_at       = db.Column(db.DateTime, default=datetime.utcnow)
+
+    from_user = db.relationship("User", foreign_keys=[from_user_id])
+    to_user   = db.relationship("User", foreign_keys=[to_user_id])

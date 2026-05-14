@@ -1,48 +1,131 @@
 {% extends "base.html" %}
 {% block title %}Multiplayer{% endblock %}
-{% block css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/multiplayer.css') }}">{% endblock %}
+{% block css %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/multiplayer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/social.css') }}">
+{% endblock %}
 {% block content %}
-<div class="lobby">
-    <div class="lobby-card">
-        <h1>Play a friend online</h1>
-        <p class="muted">Pick time control, share the room link. They sign in once and join.</p>
+<div class="lobby-page">
 
-        <form method="post" action="{{ url_for('mp.create') }}">
-            <div class="form-row">
-                <label>Time control</label>
-                <select name="time_control">
-                    <option value="off">No clock</option>
-                    <option value="1+0">1 min · Bullet</option>
-                    <option value="3+0">3 min</option>
-                    <option value="3+2">3 + 2</option>
-                    <option value="5+0" selected>5 min · Blitz</option>
-                    <option value="5+3">5 + 3</option>
-                    <option value="10+0">10 min</option>
-                    <option value="10+5">10 + 5</option>
-                    <option value="15+10">15 + 10 · Rapid</option>
-                    <option value="30+0">30 min · Classical</option>
-                </select>
+    {% if incoming %}
+    <section class="panel">
+        <div class="panel-head"><h2>Pending invites · {{ incoming|length }}</h2></div>
+        <div class="panel-body">
+            {% for inv in incoming %}
+            <div class="user-row">
+                <span class="avatar-initial">{{ inv.from_user.username[0]|upper }}</span>
+                <div class="who">
+                    <div class="name">@{{ inv.from_user.username }} wants to play</div>
+                    <div class="sub mono">
+                        {{ inv.time_control or 'no clock' }}
+                        {% if inv.analysis_allowed %} · analysis allowed{% endif %}
+                    </div>
+                </div>
+                <form method="post" action="{{ url_for('mp.decline_invite', iid=inv.id) }}">
+                    <button class="btn-tiny" type="submit">Decline</button>
+                </form>
+                <form method="post" action="{{ url_for('mp.accept_invite', iid=inv.id) }}">
+                    <button class="btn-tiny primary" type="submit">Accept</button>
+                </form>
             </div>
-            <div class="form-row inline">
-                <label style="margin:0">Allow live analysis</label>
-                <div class="switch on" id="analysisSwitch"><div class="knob"></div></div>
-                <input type="hidden" name="analysis_allowed" id="analysisInput" value="on">
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    {% if outgoing %}
+    <section class="panel">
+        <div class="panel-head"><h2>Invites sent · {{ outgoing|length }}</h2></div>
+        <div class="panel-body">
+            {% for inv in outgoing %}
+            <div class="user-row outgoing">
+                <span class="avatar-initial">{{ inv.to_user.username[0]|upper }}</span>
+                <div class="who">
+                    <div class="name">Waiting for @{{ inv.to_user.username }}</div>
+                    <div class="sub mono">Room {{ inv.room_code }} · {{ inv.time_control or 'no clock' }}</div>
+                </div>
+                <a class="btn-tiny" href="{{ url_for('mp.room', code=inv.room_code) }}">Open room</a>
+                <form method="post" action="{{ url_for('mp.decline_invite', iid=inv.id) }}">
+                    <button class="btn-tiny danger" type="submit">Cancel</button>
+                </form>
             </div>
-            <button class="btn-primary" type="submit">Create room</button>
-        </form>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
 
-        <div class="divider"><span>or</span></div>
+    <div class="lobby-grid">
+        <div class="lobby-card">
+            <h1>Open room</h1>
+            <p class="muted">Create a room and share the link with anyone.</p>
+            <form method="post" action="{{ url_for('mp.create') }}">
+                <div class="form-row">
+                    <label>Time control</label>
+                    <select name="time_control">
+                        <option value="off">No clock</option>
+                        <option value="1+0">1 min · Bullet</option>
+                        <option value="3+0">3 min</option>
+                        <option value="3+2">3 + 2</option>
+                        <option value="5+0" selected>5 min · Blitz</option>
+                        <option value="5+3">5 + 3</option>
+                        <option value="10+0">10 min</option>
+                        <option value="10+5">10 + 5</option>
+                        <option value="15+10">15 + 10 · Rapid</option>
+                        <option value="30+0">30 min · Classical</option>
+                    </select>
+                </div>
+                <div class="form-row inline">
+                    <label style="margin:0">Allow live analysis</label>
+                    <div class="switch on" id="analysisSwitch"><div class="knob"></div></div>
+                    <input type="hidden" name="analysis_allowed" id="analysisInput" value="on">
+                </div>
+                <button class="btn-primary" type="submit">Create room</button>
+            </form>
+            <div class="divider"><span>or</span></div>
+            <form method="post" action="{{ url_for('mp.join') }}" class="lobby-join">
+                <input name="code" placeholder="Room code" maxlength="6" autocomplete="off" required>
+                <button class="btn-secondary" type="submit">Join</button>
+            </form>
+        </div>
 
-        <form method="post" action="{{ url_for('mp.join') }}" class="lobby-join">
-            <input name="code" placeholder="Room code (e.g. AB12CD)" maxlength="6" autocomplete="off" required>
-            <button class="btn-secondary" type="submit">Join</button>
-        </form>
+        <div class="lobby-card">
+            <h1>Invite a friend</h1>
+            <p class="muted">Send a private invite straight to a friend.</p>
+            {% if friends %}
+                <div class="friend-invite-list">
+                    {% for f in friends %}
+                    <form method="post" action="{{ url_for('mp.invite') }}" class="friend-invite-row">
+                        <input type="hidden" name="username" value="{{ f.username }}">
+                        <span class="avatar-initial">{{ f.username[0]|upper }}</span>
+                        <div class="who">
+                            <div class="name">{{ f.display_name or f.username }}</div>
+                            <div class="sub mono">@{{ f.username }}{% if f.rating %} · {{ f.rating }}{% endif %}</div>
+                        </div>
+                        <select name="time_control" class="tc-mini">
+                            <option value="off">Off</option>
+                            <option value="3+0">3+0</option>
+                            <option value="5+0" selected>5+0</option>
+                            <option value="10+0">10+0</option>
+                            <option value="15+10">15+10</option>
+                        </select>
+                        <button class="btn-tiny primary" type="submit">Invite</button>
+                    </form>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-row">
+                    No friends yet. <a href="{{ url_for('friends.list_friends') }}">Add some</a>.
+                </div>
+            {% endif %}
+        </div>
     </div>
 </div>
+
 <script>
 (function() {
     const sw = document.getElementById('analysisSwitch');
     const inp = document.getElementById('analysisInput');
+    if (!sw) return;
     sw.addEventListener('click', () => {
         const on = !sw.classList.contains('on');
         sw.classList.toggle('on', on);

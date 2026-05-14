@@ -62,29 +62,48 @@
 }
 
 /* ============ Captured pieces tray ============ */
+/* Tray gets a frame contrasting with the pieces it shows:
+   - tray showing BLACK pieces  → cream/wood backdrop
+   - tray showing WHITE pieces  → dark backdrop
+   So both stay visible in either app theme. */
 .captured-tray {
     display: flex;
     align-items: center;
     gap: 0;
     flex-wrap: wrap;
-    min-height: 26px;
+    min-height: 32px;
+    min-width: 90px;
+    padding: 5px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(0,0,0,0.12);
+    background: #ead9b8;                  /* default: light wood */
     flex: 1;
+    max-width: 280px;
+}
+.captured-tray[data-shows="w"] {
+    background: #2a2a2e;
+    border-color: rgba(255,255,255,0.12);
+}
+.captured-tray[data-shows="b"] {
+    background: #ead9b8;
+    border-color: rgba(0,0,0,0.12);
 }
 .captured-tray .cap-piece {
     width: 22px;
     height: 22px;
-    margin-right: -8px;       /* overlap pieces slightly */
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.18));
+    margin-right: -8px;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.22));
 }
-.captured-tray .cap-piece:last-child { margin-right: 0; }
+.captured-tray .cap-piece:last-of-type { margin-right: 0; }
 .captured-tray .cap-diff {
-    margin-left: 10px;
+    margin-left: 12px;
     font-family: ui-monospace, monospace;
     font-size: 13px;
     font-weight: 700;
-    color: var(--good);
     font-variant-numeric: tabular-nums;
 }
+.captured-tray[data-shows="b"] .cap-diff { color: #2d6a3f; }
+.captured-tray[data-shows="w"] .cap-diff { color: #7fd28a; }
 
 .total-timer-chip {
     margin-left: auto;

@@ -57,6 +57,11 @@
                         </a>
                         <div class="sub mono">@{{ u.username }} · {{ u.rating }}{% if u.country %} · {{ u.country }}{% endif %}</div>
                     </div>
+                    <form method="post" action="{{ url_for('mp.invite') }}">
+                        <input type="hidden" name="username" value="{{ u.username }}">
+                        <input type="hidden" name="time_control" value="5+0">
+                        <button class="btn-tiny primary" type="submit">Invite to play</button>
+                    </form>
                     <a class="btn-tiny" href="{{ url_for('profile.view', username=u.username) }}">View</a>
                     <form method="post" action="{{ url_for('friends.remove', fid=fid) }}" onsubmit="return confirm('Remove @{{ u.username }}?');">
                         <button class="btn-tiny danger" type="submit">Remove</button>
