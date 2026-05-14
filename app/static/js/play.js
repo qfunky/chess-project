@@ -7,6 +7,9 @@ import { renderStats, renderChart, signedEval, classify } from './modules/review
 import * as modal from './modules/gameOverModal.js';
 import { Clocks, parseTimeControl } from './modules/clocks.js';
 import { PIECE_THEME, ANIM } from './modules/boardConfig.js';
+import { showPicker as showPromoPicker, isPromotionMove } from './modules/promotion.js';
+import { renderBoth as renderCaptured } from './modules/captured.js';
+import { TotalTimer } from './modules/totalTimer.js';
 
 // ============ State ============
 let game = new Chess();
@@ -18,11 +21,14 @@ let autoFlip  = localStorage.getItem('chessAutoFlip') === '1';
 let showEval  = localStorage.getItem('chessShowEval') === '1';
 let showBest  = localStorage.getItem('chessShowBest') === '1';
 let analysisAllowed = localStorage.getItem('chessAnalysisAllowed') !== '0';
+let analysisSide = localStorage.getItem('chessAnalysisSide') || 'both';  // both | white | black
+if (!['both', 'white', 'black'].includes(analysisSide)) analysisSide = 'both';
 let timeControl = localStorage.getItem('chessTC') || 'off';
 let lastMove  = null;
 let bestHint  = null;
 let reviewData = null;
 let viewingPly = null;
+let explorationMoves = [];   // SAN strings — variations explored during review
 let savedToServer = false;
 
 const savedPgn = localStorage.getItem('chessGamePgn');
@@ -59,6 +65,11 @@ const clockTop      = $('clockTop');
 const clockBottom   = $('clockBottom');
 const clockTopLabel    = $('clockTopLabel');
 const clockBottomLabel = $('clockBottomLabel');
+const capturedTop      = $('capturedTop');
+const capturedBottom   = $('capturedBottom');
+const totalTimerEl     = $('totalTimer');
+const variationBar     = $('variationBar');
+const myBoardEl        = $('myBoard');
 
 const evalBar = new EvalBar($('evalBar'), $('evalFill'), $('evalNumber'));
 const shapes = new ShapeLayer(boardOverlay, () => board.orientation());
@@ -69,6 +80,19 @@ const clocks = new Clocks({
     onTimeout: loser => handleTimeout(loser),
 });
 
+const totalTimer = new TotalTimer(totalTimerEl);
+
+// Skill slider — bind early so it works even if anything below crashes.
+skillSlider.value = localStorage.getItem('chessSkill') || skillSlider.value;
+skillOut.textContent = skillSlider.value;
+skillSlider.addEventListener('input', () => {
+    skillOut.textContent = skillSlider.value;
+    localStorage.setItem('chessSkill', skillSlider.value);
+});
+
+// Surface any init failures in the browser console so they don't silently kill the page.
+window.addEventListener('error', e => console.error('[chess] runtime error:', e.message, e.filename, e.lineno));
+
 // Restore UI state
 tcSelect.value = timeControl;
 applyAnalysisAllowed();
@@ -78,7 +102,11 @@ evalBar.setEnabled(showEval && analysisAllowed);
 function saveLocal() { localStorage.setItem('chessGamePgn', game.pgn()); }
 
 function setStatus(text, color) {
-    statusEl.innerHTML = `<span class="dot" style="background:${color || '#34c759'}"></span>${text}`;
+    const dot = statusEl.querySelector('.dot');
+    const tx  = statusEl.querySelector('#statusText');
+    if (dot) dot.style.background = color || '#34c759';
+    if (tx)  tx.textContent = text;
+    else     statusEl.innerHTML = `<span class="dot" style="background:${color||'#34c759'}"></span><span id="statusText">${text}</span><span class="total-timer-chip" id="totalTimer">0:00</span>`;
 }
 
 function refreshStatus() {
@@ -92,9 +120,60 @@ function refreshStatus() {
 function refreshHighlights() {
     hl.clearAll();
     shapes.clear('system');
-    if (viewingPly !== null) return;
+    if (viewingPly !== null && !inExploration()) return;
     if (lastMove) hl.last(lastMove.from, lastMove.to);
-    if (showBest && bestHint && analysisAllowed) shapes.setBestMove(bestHint);
+    if (showBest && bestHint && analysisAllowed && analysisSideAllows()) shapes.setBestMove(bestHint);
+}
+
+function analysisSideAllows() {
+    if (analysisSide === 'both') return true;
+    if (analysisSide === 'white') return game.turn() === 'w';
+    if (analysisSide === 'black') return game.turn() === 'b';
+    return true;
+}
+
+function refreshCaptured() {
+    const dispGame = getDisplayGame();
+    const userColor = gameMode === 'engine' ? userSide :
+        (board && board.orientation()) || 'white';
+    renderCaptured(dispGame, capturedTop, capturedBottom, userColor);
+}
+
+function inExploration() { return viewingPly !== null && explorationMoves.length > 0; }
+
+function getDisplayGame() {
+    // Returns a chess.js representing currently-shown position.
+    if (viewingPly === null && explorationMoves.length === 0) return game;
+    const dg = new Chess();
+    const main = game.history();
+    const limit = viewingPly !== null ? viewingPly + 1 : main.length;
+    for (let i = 0; i < limit; i++) dg.move(main[i]);
+    for (const san of explorationMoves) dg.move(san, { sloppy: true });
+    return dg;
+}
+
+function syncBoardFromDisplay() {
+    board.position(getDisplayGame().fen());
+}
+
+function renderVariationBar() {
+    if (explorationMoves.length === 0) {
+        variationBar.classList.remove('visible');
+        variationBar.innerHTML = '';
+        return;
+    }
+    variationBar.classList.add('visible');
+    variationBar.innerHTML =
+        `<span class="var-label">Variation</span>` +
+        `<span class="var-line">${explorationMoves.join('  ')}</span>` +
+        `<button class="var-reset" id="varResetBtn">Reset</button>`;
+    $('varResetBtn').addEventListener('click', () => {
+        explorationMoves = [];
+        syncBoardFromDisplay();
+        refreshHighlights();
+        refreshCaptured();
+        renderVariationBar();
+    });
 }
 
 function applyAnalysisAllowed() {
@@ -147,27 +226,31 @@ function renderHistory() {
 }
 
 function jumpToPly(ply) {
-    const temp = new Chess();
-    const moves = game.history();
-    for (let i = 0; i <= ply && i < moves.length; i++) temp.move(moves[i]);
     viewingPly = ply;
-    board.position(temp.fen());
+    explorationMoves = [];
+    syncBoardFromDisplay();
     hl.clearAll();
-    const v = temp.history({verbose:true});
+    const dg = getDisplayGame();
+    const v = dg.history({verbose:true});
     const last = v[v.length - 1];
     if (last) hl.last(last.from, last.to);
     liveLink.classList.add('visible');
     updateUndoBtn();
     renderHistory();
+    refreshCaptured();
+    renderVariationBar();
 }
 
 function goLive() {
     viewingPly = null;
+    explorationMoves = [];
     board.position(game.fen());
     liveLink.classList.remove('visible');
     refreshHighlights();
     updateUndoBtn();
     renderHistory();
+    refreshCaptured();
+    renderVariationBar();
 }
 
 // ============ Engine ============
@@ -180,20 +263,22 @@ async function requestEngineMove() {
         const m = game.move(data.move, { sloppy: true });
         lastMove = m ? { from: m.from, to: m.to } : null;
         board.position(game.fen());
-        if (analysisAllowed && showEval) evalBar.set(data.analysis);
+        if (analysisAllowed && showEval && analysisSideAllows()) evalBar.set(data.analysis);
         saveLocal();
-        renderHistory(); updateUndoBtn(); refreshStatus(); refreshHighlights();
+        totalTimer.start();
+        renderHistory(); updateUndoBtn(); refreshStatus(); refreshHighlights(); refreshCaptured();
         clocks.setActive(game.turn() === 'w' ? 'white' : 'black');
-        if (analysisAllowed && (showBest || showEval)) requestHint();
+        if (analysisAllowed && (showBest || showEval) && analysisSideAllows()) requestHint();
         if (game.game_over()) handleGameOver();
     } catch { setStatus('Engine error', '#ff3b30'); }
 }
 
 async function requestHint({ show=false } = {}) {
     if (game.game_over() || !analysisAllowed) return;
+    if (!show && !analysisSideAllows()) return;
     const data = await api.hint(game.fen());
     bestHint = data.move;
-    if (showEval) evalBar.set(data.analysis);
+    if (showEval || show) evalBar.set(data.analysis);
     if (show || showBest || showEval) {
         aBox.classList.add('visible');
         aBox.classList.remove('flash'); void aBox.offsetWidth; aBox.classList.add('flash');
@@ -217,6 +302,7 @@ async function runAnalyze() {
 function handleGameOver() {
     const outcome = modal.describeOutcome(game);
     clocks.setActive(null);
+    totalTimer.stop();
     refreshStatus();
     modal.show(outcome);
     saveFinishedGame(outcome.result);
@@ -225,6 +311,7 @@ function handleGameOver() {
 function handleTimeout(loser) {
     const winner = loser === 'white' ? 'Black' : 'White';
     setStatus(`${winner} wins on time`, '#ff3b30');
+    totalTimer.stop();
     modal.show({
         icon: loser === 'white' ? '♚' : '♔',
         title: `${winner} wins on time`,
@@ -247,8 +334,18 @@ function saveFinishedGame(result) {
 
 // ============ Drag ============
 function onDragStart(source, piece) {
-    if (viewingPly !== null) return false;
     if (game.game_over()) return false;
+
+    // During review the user can drag any side to explore variations.
+    if (viewingPly !== null) {
+        const dg = getDisplayGame();
+        if (piece[0] !== dg.turn()) return false;
+        sourceSquare = null;
+        shapes.clearUser();
+        hl.legalMoves(dg, source);
+        return;
+    }
+
     if (gameMode === 'engine') {
         const ut = userSide[0];
         if (game.turn() !== ut || piece[0] !== ut) return false;
@@ -260,52 +357,88 @@ function onDragStart(source, piece) {
     hl.legalMoves(game, source);
 }
 
-function handleMove(source, target) {
-    const move = game.move({ from: source, to: target, promotion: 'q' });
+async function promotionChoice(target, colorChar) {
+    return showPromoPicker({
+        boardEl: myBoardEl,
+        square: target,
+        color: colorChar,
+        orientation: board.orientation(),
+    });
+}
+
+async function handleMove(source, target) {
+    // Review-mode exploration — operate on the display game, not the real one.
+    if (viewingPly !== null) {
+        const dg = getDisplayGame();
+        let promo;
+        if (isPromotionMove(dg, source, target)) {
+            promo = await promotionChoice(target, dg.turn());
+            if (!promo) { board.position(dg.fen()); return null; }
+        }
+        const m = dg.move({ from: source, to: target, promotion: promo || 'q' });
+        if (!m) { board.position(dg.fen()); refreshHighlights(); return null; }
+        explorationMoves.push(m.san);
+        board.position(dg.fen());
+        lastMove = { from: m.from, to: m.to };
+        renderVariationBar();
+        refreshHighlights(); refreshCaptured();
+        return m;
+    }
+
+    // Real move: pick promotion piece if applicable
+    let promo;
+    if (isPromotionMove(game, source, target)) {
+        promo = await promotionChoice(target, game.turn());
+        if (!promo) { board.position(game.fen()); return null; }
+    }
+
+    const move = game.move({ from: source, to: target, promotion: promo || 'q' });
     hl.clearAll();
     if (move === null) { refreshHighlights(); return null; }
     lastMove = { from: move.from, to: move.to };
+    board.position(game.fen());
     saveLocal();
-    renderHistory(); updateUndoBtn(); refreshStatus(); refreshHighlights();
+    totalTimer.start();
+    renderHistory(); updateUndoBtn(); refreshStatus(); refreshHighlights(); refreshCaptured();
     clocks.setActive(game.turn() === 'w' ? 'white' : 'black');
     if (game.game_over()) { handleGameOver(); return move; }
     if (gameMode === 'engine') setTimeout(requestEngineMove, 150);
     else {
         if (autoFlip) setTimeout(flipWithAnim, 250);
-        if (analysisAllowed && (showBest || showEval)) setTimeout(requestHint, 100);
+        if (analysisAllowed && (showBest || showEval) && analysisSideAllows()) setTimeout(requestHint, 100);
     }
     return move;
 }
 
 function onDrop(source, target) {
-    const move = handleMove(source, target);
-    if (move === null) return 'snapback';
+    // Snap the piece back instantly; handleMove updates the board to the real position
+    // (or restores it) once promotion / async logic resolves.
+    handleMove(source, target);
+    return 'snapback';
 }
 
-function onSnapEnd() { board.position(game.fen()); refreshHighlights(); }
+function onSnapEnd() { board.position(getDisplayGame().fen()); refreshHighlights(); }
 
 function onSquareClick(square) {
-    if (viewingPly !== null || game.game_over()) return;
-    if (gameMode === 'engine' && game.turn() !== userSide[0]) return;
+    if (game.game_over()) return;
+    // In review with no exploration started, allow exploration if user clicks any piece.
+    if (viewingPly === null && gameMode === 'engine' && game.turn() !== userSide[0]) return;
 
+    const dispGame = getDisplayGame();
     if (sourceSquare) {
         if (sourceSquare === square) {
             sourceSquare = null; refreshHighlights(); return;
         }
-        const move = handleMove(sourceSquare, square);
-        if (move) {
-            board.position(game.fen());
-            sourceSquare = null;
-            return;
-        }
+        handleMove(sourceSquare, square);
+        sourceSquare = null;
+        return;
     }
-
-    const piece = game.get(square);
-    if (piece && piece.color === game.turn()) {
+    const piece = dispGame.get(square);
+    if (piece && piece.color === dispGame.turn()) {
         sourceSquare = square;
         hl.clearAll();
         if (lastMove) hl.last(lastMove.from, lastMove.to);
-        hl.legalMoves(game, square);
+        hl.legalMoves(dispGame, square);
     } else {
         sourceSquare = null;
         refreshHighlights();
@@ -317,6 +450,7 @@ function newGame() {
     localStorage.removeItem('chessGamePgn');
     game.reset();
     lastMove = null; bestHint = null; reviewData = null; viewingPly = null;
+    explorationMoves = [];
     savedToServer = false;
     reviewSection.classList.remove('visible');
     shapes.clearUser(); shapes.clear('system');
@@ -325,11 +459,13 @@ function newGame() {
     board.position(game.fen());
     applyTimeControl();
     applyAnalysisAllowed();
+    totalTimer.reset();
     renderHistory(); updateUndoBtn(); updateModeUI(); refreshStatus(); refreshHighlights();
+    refreshCaptured(); renderVariationBar();
     liveLink.classList.remove('visible');
     aBox.classList.remove('visible');
     if (gameMode === 'engine' && userSide === 'black') setTimeout(requestEngineMove, 300);
-    else if (analysisAllowed && (showBest || showEval)) requestHint();
+    else if (analysisAllowed && (showBest || showEval) && analysisSideAllows()) requestHint();
 }
 
 function doUndo() {
@@ -384,7 +520,16 @@ async function runReview() {
         reviewData = { classifications: cls, evals };
         renderHistory();
         renderChart(evalChart, evals, cls);
-        renderStats(reviewStats, cls);
+        // Split stats per side — white moves are even plies (0, 2, …), black are odd
+        const whiteCls = cls.filter((_, i) => i % 2 === 0);
+        const blackCls = cls.filter((_, i) => i % 2 === 1);
+        reviewStats.innerHTML = '';
+        const whiteBlock = document.createElement('div'); whiteBlock.className = 'review-side';
+        const blackBlock = document.createElement('div'); blackBlock.className = 'review-side';
+        reviewStats.appendChild(whiteBlock);
+        reviewStats.appendChild(blackBlock);
+        renderStats(whiteBlock, whiteCls, 'White');
+        renderStats(blackBlock, blackCls, 'Black');
         reviewSection.classList.add('visible');
         reviewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } finally {
@@ -452,6 +597,19 @@ tcSelect.addEventListener('change', () => {
     localStorage.setItem('chessTC', timeControl);
 });
 
+// Analysis side selector
+document.querySelectorAll('#analysisSideSelect button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.side === analysisSide);
+    btn.addEventListener('click', () => {
+        analysisSide = btn.dataset.side;
+        localStorage.setItem('chessAnalysisSide', analysisSide);
+        document.querySelectorAll('#analysisSideSelect button').forEach(b =>
+            b.classList.toggle('active', b.dataset.side === analysisSide));
+        if (analysisSideAllows() && analysisAllowed && (showBest || showEval)) requestHint();
+        else { bestHint = null; aBox.classList.remove('visible'); evalBar.setEnabled(false); refreshHighlights(); }
+    });
+});
+
 document.querySelectorAll('#modeSelect button').forEach(btn => {
     btn.addEventListener('click', () => {
         if (btn.dataset.mode === gameMode) return;
@@ -473,13 +631,6 @@ document.querySelectorAll('#sideSelect button').forEach(btn => {
 document.querySelectorAll('#sideSelect button').forEach(b =>
     b.classList.toggle('active', b.dataset.side === userSide));
 
-skillSlider.value = localStorage.getItem('chessSkill') || skillSlider.value;
-skillOut.textContent = skillSlider.value;
-skillSlider.addEventListener('input', () => {
-    skillOut.textContent = skillSlider.value;
-    localStorage.setItem('chessSkill', skillSlider.value);
-});
-
 undoBtn.addEventListener('click', doUndo);
 analyzeBtn.addEventListener('click', runAnalyze);
 reviewBtn.addEventListener('click', runReview);
@@ -489,6 +640,60 @@ savePgnBtn.addEventListener('click', savePgnFile);
 loadPgnBtn.addEventListener('click', () => pgnFile.click());
 pgnFile.addEventListener('change', e => { if (e.target.files[0]) loadPgnFile(e.target.files[0]); });
 liveLink.addEventListener('click', goLive);
+
+// ============ Resign / Draw (solo) ============
+const resignBtn = $('resignBtn');
+const drawBtn = $('drawBtn');
+
+function handleResign() {
+    if (game.game_over()) return;
+    if (!confirm('Resign this game?')) return;
+    const loser = (gameMode === 'engine') ? userSide : (game.turn() === 'w' ? 'white' : 'black');
+    const result = loser === 'white' ? '0-1' : '1-0';
+    const winner = loser === 'white' ? 'Black' : 'White';
+    clocks.setActive(null);
+    setStatus(`${winner} wins by resignation`, '#ff3b30');
+    modal.show({
+        icon: '🏳️',
+        title: gameMode === 'engine' ? 'You resigned' : `${winner} wins by resignation`,
+        sub: 'Better luck next game.',
+    });
+    saveFinishedGame(result);
+}
+
+async function handleDrawOffer() {
+    if (game.game_over()) return;
+    if (gameMode === 'engine') {
+        setStatus('Offering draw…', '#ff9f0a');
+        try {
+            const data = await api.hint(game.fen());
+            const evaluation = data.analysis || {};
+            const cp = evaluation.type === 'mate' ? 9999 : Math.abs(evaluation.value || 0);
+            const accept = cp < 60 && game.history().length >= 20;
+            if (accept) {
+                clocks.setActive(null);
+                setStatus('Draw agreed', '#34c759');
+                modal.show({ icon: '½', title: 'Draw agreed', sub: 'Engine accepted your offer.' });
+                saveFinishedGame('1/2-1/2');
+            } else {
+                setStatus('Engine declined the draw', '#ff9f0a');
+                setTimeout(refreshStatus, 2500);
+            }
+        } catch {
+            setStatus('Engine error', '#ff3b30');
+        }
+    } else {
+        if (confirm("Agree to a draw? (Both players' consent)")) {
+            clocks.setActive(null);
+            setStatus('Draw agreed', '#34c759');
+            modal.show({ icon: '½', title: 'Draw agreed' });
+            saveFinishedGame('1/2-1/2');
+        }
+    }
+}
+
+resignBtn.addEventListener('click', handleResign);
+drawBtn.addEventListener('click', handleDrawOffer);
 
 modal.bind(runReview, newGame);
 
@@ -521,6 +726,8 @@ boardEl.addEventListener('touchstart', handleSquareEvent, { passive: false });
 
 updateModeUI(); renderHistory(); updateUndoBtn(); refreshStatus();
 applyTimeControl();
+refreshCaptured();
+renderVariationBar();
 
 const v0 = game.history({verbose:true});
 if (v0.length) {
@@ -528,10 +735,11 @@ if (v0.length) {
     lastMove = { from: l.from, to: l.to };
     hl.last(l.from, l.to);
     clocks.setActive(game.turn() === 'w' ? 'white' : 'black');
+    if (!game.game_over()) totalTimer.start();
 }
 if (!game.game_over() && gameMode === 'engine' && game.turn() !== userSide[0]) {
     setTimeout(requestEngineMove, 400);
-} else if (analysisAllowed && (showBest || showEval)) {
+} else if (analysisAllowed && (showBest || showEval) && analysisSideAllows()) {
     setTimeout(requestHint, 300);
 }
 if (game.game_over()) handleGameOver();

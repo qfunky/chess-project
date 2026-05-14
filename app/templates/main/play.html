@@ -52,6 +52,13 @@
             <h2>Live analysis</h2>
             <div class="row"><label>Show evaluation</label><div class="switch" id="showEvalSwitch"><div class="knob"></div></div></div>
             <div class="row"><label>Show best move</label><div class="switch" id="showBestSwitch"><div class="knob"></div></div></div>
+            <div class="row" style="margin-top:8px"><label>Side</label>
+                <div class="segmented mini" id="analysisSideSelect">
+                    <button data-side="both" class="active">Both</button>
+                    <button data-side="white">White</button>
+                    <button data-side="black">Black</button>
+                </div>
+            </div>
             <div class="row"><label>Auto-flip (Friend)</label><div class="switch" id="autoFlipSwitch"><div class="knob"></div></div></div>
             <div class="analysis-box" id="analysisBox">
                 <div class="row1"><span class="eval" id="aEval">+0.00</span><span class="move" id="aMove">—</span></div>
@@ -61,15 +68,23 @@
     </aside>
 
     <main class="board-area">
-        <div class="clocks">
+        <div class="board-side-row top">
+            <div class="captured-tray" id="capturedTop"></div>
             <div class="clock" id="clockTop" style="display:none"><div class="label" id="clockTopLabel">Black</div><div class="time">5:00</div></div>
-            <div class="clock" id="clockBottom" style="display:none"><div class="label" id="clockBottomLabel">White</div><div class="time">5:00</div></div>
         </div>
         <div class="board-row">
             <div class="eval-bar" id="evalBar"><div class="fill" id="evalFill"></div><div class="number" id="evalNumber">0.0</div></div>
             {% include "partials/board.html" %}
         </div>
-        <div id="status" class="status"><span class="dot"></span>Your move — White</div>
+        <div class="board-side-row bottom">
+            <div class="captured-tray" id="capturedBottom"></div>
+            <div class="clock" id="clockBottom" style="display:none"><div class="label" id="clockBottomLabel">White</div><div class="time">5:00</div></div>
+        </div>
+        <div id="status" class="status">
+            <span class="dot"></span><span id="statusText">Your move — White</span>
+            <span class="total-timer-chip" id="totalTimer">0:00</span>
+        </div>
+        <div class="variation-bar" id="variationBar"></div>
     </main>
 
     <aside class="col-right">
@@ -88,6 +103,8 @@
                 <button class="secondary" id="analyzeBtn">Analyze</button>
                 <button class="secondary" id="reviewBtn" disabled>Review</button>
                 <button class="secondary" id="flipBtn">Flip</button>
+                <button class="secondary" id="drawBtn">½ Draw</button>
+                <button class="secondary danger" id="resignBtn">Resign</button>
                 <button class="ghost" id="savePgnBtn">Save PGN</button>
                 <button class="ghost" id="loadPgnBtn">Load PGN</button>
             </div>

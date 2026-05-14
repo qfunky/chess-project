@@ -12,19 +12,16 @@
     box-shadow: var(--shadow-lg);
     border-radius: 8px;
     background: #9c7c5a;
-    width: 100%;
-    max-width: 640px;
-    aspect-ratio: 1;
-    overflow: hidden;
-    touch-action: none; /* Запрещает скролл при перетаскивании */
+    touch-action: none;
 }
 
-#myBoard { width: 100% !important; }
-
-/* Bigger boards on large screens — SVG pieces stay crisp at any size */
-@media (min-width: 1600px) { .board-frame { max-width: 720px; } }
-@media (min-width: 2000px) { .board-frame { max-width: 820px; } }
-@media (max-width: 1100px) { .board-frame { max-width: 92vw; } }
+/* chessboard.js measures the container width at init, so use a concrete pixel size. */
+#myBoard {
+    width: 560px !important;
+    max-width: 92vw;
+}
+@media (min-width: 1600px) { #myBoard { width: 640px !important; } }
+@media (min-width: 2000px) { #myBoard { width: 720px !important; } }
 
 /* Pieces: smooth animations on GPU layer. SVG renders crisp at any size. */
 .piece-417db {

@@ -106,3 +106,30 @@
     color: var(--ink-soft);
     font-family: -apple-system, monospace;
 }
+
+/* draw-offer banner */
+.draw-banner {
+    background: color-mix(in srgb, var(--warn) 18%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line));
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: slideUp 0.3s var(--ease);
+}
+.draw-banner .draw-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.draw-banner .btn-tiny {
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+.draw-banner .btn-tiny.primary { background: var(--accent); color: #fff; border-color: transparent; }
+.draw-banner .btn-tiny.primary:hover { background: var(--accent-hover); }
+.draw-banner .btn-tiny:hover { background: var(--hover); }

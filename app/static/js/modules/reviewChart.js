@@ -1,16 +1,44 @@
 const NS = 'http://www.w3.org/2000/svg';
 
-export function renderStats(container, classifications) {
-    const counts = { best:0, good:0, inaccuracy:0, mistake:0, blunder:0 };
-    classifications.forEach(c => counts[c] = (counts[c]||0) + 1);
+export const ANNOTATIONS = {
+    brilliant:  '!!',
+    great:      '!',
+    best:       '',
+    excellent:  '',
+    good:       '',
+    inaccuracy: '?!',
+    mistake:    '?',
+    blunder:    '??',
+};
+
+const STAT_ORDER = [
+    ['brilliant','Brilliant'],
+    ['great','Great'],
+    ['best','Best'],
+    ['excellent','Excellent'],
+    ['good','Good'],
+    ['inaccuracy','Inaccuracy'],
+    ['mistake','Mistake'],
+    ['blunder','Blunder'],
+];
+
+export function renderStats(container, classifications, label = '') {
+    const counts = Object.fromEntries(STAT_ORDER.map(([k]) => [k, 0]));
+    classifications.forEach(c => counts[c] = (counts[c] || 0) + 1);
     container.innerHTML = '';
-    [['best','Best'],['good','Good'],['inaccuracy','Inaccuracy'],['mistake','Mistake'],['blunder','Blunder']]
-        .forEach(([k, label]) => {
-            const div = document.createElement('div');
-            div.className = 'review-stat';
-            div.innerHTML = `<span class="num cls-${k}">${counts[k]||0}</span><span class="lbl">${label}</span>`;
-            container.appendChild(div);
-        });
+    if (label) {
+        const h = document.createElement('div');
+        h.className = 'review-stat-label';
+        h.textContent = label;
+        container.appendChild(h);
+    }
+    STAT_ORDER.forEach(([k, lbl]) => {
+        if (!counts[k]) return;   // hide empty buckets to keep it compact
+        const div = document.createElement('div');
+        div.className = 'review-stat';
+        div.innerHTML = `<span class="num cls-${k}">${counts[k]}</span><span class="lbl">${lbl}</span>`;
+        container.appendChild(div);
+    });
 }
 
 export function renderChart(svg, evals, classifications) {
@@ -60,11 +88,14 @@ export function signedEval(a, sideChar) {
     return sideChar === 'w' ? v : -v;
 }
 
+/** Classify a single move from its eval delta (negative = lost cp).
+ *  Optional extras: brilliant / great are detected by callers with extra context. */
 export function classify(deltaCp, isBest) {
     if (isBest) return 'best';
-    const d = Math.abs(deltaCp);
-    if (d < 50)  return 'good';
-    if (d < 100) return 'inaccuracy';
-    if (d < 200) return 'mistake';
+    const loss = Math.max(0, -deltaCp);
+    if (loss < 25)  return 'excellent';
+    if (loss < 50)  return 'good';
+    if (loss < 100) return 'inaccuracy';
+    if (loss < 200) return 'mistake';
     return 'blunder';
 }

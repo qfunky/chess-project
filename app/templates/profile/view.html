@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}@{{ u.username }}{% endblock %}
+{% block css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/social.css') }}">{% endblock %}
+
+{% block content %}
+<div class="social-page">
+    <header class="profile-head">
+        <div class="profile-id">
+            <div class="name-line">
+                <h1>{{ u.display_name or u.username }}</h1>
+                {% if u.title %}<span class="title-chip">{{ u.title }}</span>{% endif %}
+            </div>
+            <div class="handle mono">@{{ u.username }}</div>
+            {% if u.bio %}<p class="bio">{{ u.bio }}</p>{% endif %}
+            <div class="meta-row mono">
+                {% if u.country %}<span>📍 {{ u.country }}</span>{% endif %}
+                <span>Joined {{ u.created_at.strftime('%b %Y') }}</span>
+            </div>
+        </div>
+        <div class="profile-actions">
+            {% if relation == 'self' %}
+                <a href="{{ url_for('profile.edit') }}" class="btn-secondary">Edit profile</a>
+            {% elif relation == 'friends' %}
+                <span class="chip-good">Friends</span>
+            {% elif relation == 'outgoing' %}
+                <span class="chip-muted">Invite sent</span>
+            {% elif relation == 'incoming' %}
+                <a href="{{ url_for('friends.list_friends') }}" class="btn-primary">Respond to request</a>
+            {% else %}
+                <form method="post" action="{{ url_for('friends.send_request') }}">
+                    <input type="hidden" name="username" value="{{ u.username }}">
+                    <button class="btn-primary" type="submit">Add friend</button>
+                </form>
+            {% endif %}
+        </div>
+    </header>
+
+    <section class="stats-grid">
+        <div class="stat accent"><div class="num">{{ u.rating }}</div><div class="lbl">Rating</div></div>
+        <div class="stat"><div class="num">{{ stats.games }}</div><div class="lbl">Games</div></div>
+        <div class="stat good"><div class="num">{{ stats.wins }}</div><div class="lbl">Wins</div></div>
+        <div class="stat bad"><div class="num">{{ stats.losses }}</div><div class="lbl">Losses</div></div>
+        <div class="stat"><div class="num">{{ stats.draws }}</div><div class="lbl">Draws</div></div>
+        <div class="stat"><div class="num">{{ stats.win_rate }}%</div><div class="lbl">Win rate</div></div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head"><h2>Recent activity</h2></div>
+        <div class="panel-body">
+            {% if games %}
+                {% for g in games %}
+                <div class="activity-row">
+                    {% set won = (g.result == '1-0' and g.color == 'white') or (g.result == '0-1' and g.color == 'black') %}
+                    {% set lost = (g.result == '1-0' and g.color == 'black') or (g.result == '0-1' and g.color == 'white') %}
+                    <span class="result-chip {{ 'win' if won else 'loss' if lost else 'draw' }}">
+                        {{ 'W' if won else 'L' if lost else 'D' }}
+                    </span>
+                    <div class="who">
+                        <div class="name">vs {{ g.opponent }}</div>
+                        <div class="sub mono">{{ g.created_at.strftime('%Y-%m-%d') }} · {{ g.mode }} · {{ g.color }}</div>
+                    </div>
+                    {% if relation == 'self' %}
+                        <a href="{{ url_for('games.review', game_id=g.id) }}" class="btn-tiny">Review</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-row">No games played yet.</div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -192,6 +192,8 @@ button.primary:disabled { background: var(--line); color: var(--ink-soft); curso
 button.secondary { background: var(--hover); color: var(--ink); }
 button.secondary:hover { background: var(--line); }
 button.secondary:disabled { color: var(--ink-soft); cursor: not-allowed; }
+button.secondary.danger { color: var(--bad); }
+button.secondary.danger:hover { background: color-mix(in srgb, var(--bad) 14%, transparent); }
 button.ghost { background: transparent; color: var(--ink-soft); padding: 8px 12px; font-size: 12.5px; }
 button.ghost:hover { color: var(--ink); background: var(--hover); }
 
@@ -316,6 +318,38 @@ input[type="range"]::-moz-range-thumb {
 ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ============ Promotion picker ============ */
+.promo-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.18);
+    z-index: 199;
+    animation: fadeIn 0.15s var(--ease);
+}
+.promo-overlay {
+    position: fixed;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: slideUp 0.15s var(--ease);
+    display: flex;
+    flex-direction: column;
+}
+.promo-overlay .promo-option {
+    background: var(--surface);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.12s var(--ease);
+    display: grid;
+    place-items: center;
+}
+.promo-overlay .promo-option:hover { background: var(--accent-soft); }
+.promo-overlay .promo-option img { width: 80%; height: 80%; pointer-events: none; }
 
 /* ============ Modal ============ */
 .modal-backdrop {

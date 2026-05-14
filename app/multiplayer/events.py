@@ -67,6 +67,54 @@ def on_move(data):
         _persist_game(room)
 
 
+@socketio.on("resign")
+def on_resign(data):
+    code = (data or {}).get("code", "").upper()
+    room = rooms.get_room(code)
+    if not room or not current_user.is_authenticated: return
+    color = room.color_of_user(current_user.username)
+    if color not in ("white", "black"): return
+    if room.resign(color):
+        emit("state", room.state(), to=code)
+        _persist_game(room)
+
+
+@socketio.on("draw_offer")
+def on_draw_offer(data):
+    code = (data or {}).get("code", "").upper()
+    room = rooms.get_room(code)
+    if not room or not current_user.is_authenticated: return
+    color = room.color_of_user(current_user.username)
+    if color not in ("white", "black"): return
+    if room.offer_draw(color):
+        emit("state", room.state(), to=code)
+        if room.over:
+            _persist_game(room)
+
+
+@socketio.on("draw_accept")
+def on_draw_accept(data):
+    code = (data or {}).get("code", "").upper()
+    room = rooms.get_room(code)
+    if not room or not current_user.is_authenticated: return
+    color = room.color_of_user(current_user.username)
+    if color not in ("white", "black"): return
+    if room.accept_draw(color):
+        emit("state", room.state(), to=code)
+        _persist_game(room)
+
+
+@socketio.on("draw_decline")
+def on_draw_decline(data):
+    code = (data or {}).get("code", "").upper()
+    room = rooms.get_room(code)
+    if not room or not current_user.is_authenticated: return
+    color = room.color_of_user(current_user.username)
+    if color not in ("white", "black"): return
+    if room.decline_draw(color):
+        emit("state", room.state(), to=code)
+
+
 @socketio.on("disconnect")
 def on_disconnect():
     sid = request.sid

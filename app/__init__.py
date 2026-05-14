@@ -39,12 +39,16 @@ def create_app(config_class=Config):
     from .games.routes     import bp as games_bp
     from .multiplayer.routes import bp as mp_bp
     from .api.routes       import bp as api_bp
+    from .friends.routes   import bp as friends_bp
+    from .profile.routes   import bp as profile_bp
 
     app.register_blueprint(main_bp)
-    app.register_blueprint(auth_bp,  url_prefix="/auth")
-    app.register_blueprint(games_bp, url_prefix="/games")
-    app.register_blueprint(mp_bp,    url_prefix="/multiplayer")
-    app.register_blueprint(api_bp,   url_prefix="/api")
+    app.register_blueprint(auth_bp,    url_prefix="/auth")
+    app.register_blueprint(games_bp,   url_prefix="/games")
+    app.register_blueprint(mp_bp,      url_prefix="/multiplayer")
+    app.register_blueprint(api_bp,     url_prefix="/api")
+    app.register_blueprint(friends_bp, url_prefix="/friends")
+    app.register_blueprint(profile_bp, url_prefix="/profile")
 
     # SocketIO event handlers (registers on import)
     from .multiplayer import events  # noqa: F401

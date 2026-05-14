@@ -6,6 +6,9 @@ import { EvalBar, formatEval } from './modules/evalBar.js';
 import * as modal from './modules/gameOverModal.js';
 import { Clocks } from './modules/clocks.js';
 import { PIECE_THEME, ANIM } from './modules/boardConfig.js';
+import { showPicker as showPromoPicker, isPromotionMove } from './modules/promotion.js';
+import { renderBoth as renderCaptured } from './modules/captured.js';
+import { TotalTimer } from './modules/totalTimer.js';
 
 const code = window.__ROOM__;
 const game = new Chess();
@@ -36,6 +39,11 @@ const whiteRow   = $('whiteRow');
 const blackRow   = $('blackRow');
 const boardFrame = $('boardFrame');
 const boardOverlay = $('boardOverlay');
+const myBoardEl    = $('myBoard');
+const capturedTop  = $('capturedTop');
+const capturedBot  = $('capturedBottom');
+const totalTimerEl = $('totalTimer');
+const totalTimer   = new TotalTimer(totalTimerEl);
 const liveCard   = $('liveAnalysisCard');
 const aBox       = $('analysisBox');
 const aEval      = $('aEval');
@@ -60,7 +68,11 @@ const clocks = new Clocks({
 
 // ============ UI helpers ============
 function setStatus(text, color) {
-    statusEl.innerHTML = `<span class="dot" style="background:${color || '#34c759'}"></span>${text}`;
+    const dot = statusEl.querySelector('.dot');
+    const tx  = statusEl.querySelector('#statusText');
+    if (dot) dot.style.background = color || '#34c759';
+    if (tx)  tx.textContent = text;
+    else     statusEl.innerHTML = `<span class="dot" style="background:${color||'#34c759'}"></span><span id="statusText">${text}</span><span class="total-timer-chip" id="totalTimer">0:00</span>`;
 }
 
 function refreshHighlights() {
@@ -99,23 +111,31 @@ function onDragStart(source, piece) {
     hl.legalMoves(game, source);
 }
 
-function handleMove(source, target) {
-    const move = game.move({ from: source, to: target, promotion: 'q' });
-    if (move === null) { refreshHighlights(); return null; }
-    
-    // В мультиплеере мы делаем ход оптимистично и тут же откатываем, 
-    // либо просто отправляем на сервер. Здесь мы полагаемся на ответ сервера.
+async function handleMove(source, target) {
+    let promo;
+    if (isPromotionMove(game, source, target)) {
+        promo = await showPromoPicker({
+            boardEl: myBoardEl,
+            square: target,
+            color: game.turn(),
+            orientation: board.orientation(),
+        });
+        if (!promo) { board.position(game.fen()); return null; }
+    }
+    const move = game.move({ from: source, to: target, promotion: promo || 'q' });
+    if (move === null) { refreshHighlights(); board.position(game.fen()); return null; }
+    // Send to server (authoritative), then revert local so the broadcast wins
     const uci = move.from + move.to + (move.promotion || '');
     pendingOptimisticMove = uci;
     socket.emit('move', { code, uci });
-    game.undo(); 
+    game.undo();
     hl.clearAll();
     return move;
 }
 
 function onDrop(source, target) {
-    const move = handleMove(source, target);
-    if (move === null) return 'snapback';
+    handleMove(source, target);
+    return 'snapback';
 }
 
 function onSnapEnd() { board.position(game.fen()); refreshHighlights(); }
@@ -168,6 +188,14 @@ function applyServerState(state) {
     board.position(state.fen);
     refreshHighlights();
 
+    // Captured pieces — derived from PGN-replay (game has only current FEN)
+    const userColor = myColor === 'black' ? 'black' : 'white';
+    renderCaptured(fresh, capturedTop, capturedBot, userColor);
+
+    // Total timer — start once the first move happens, stop on game over
+    if (state.over) totalTimer.stop();
+    else if (state.pgn) totalTimer.start();
+
     // Players + online state
     setPlayer(whiteRow, whiteName, state.players.white, state.online && state.online.white, myColor === 'white');
     setPlayer(blackRow, blackName, state.players.black, state.online && state.online.black, myColor === 'black');
@@ -195,6 +223,9 @@ function applyServerState(state) {
         evalBar.setEnabled(false);
         evalBarEl.style.display = 'none';
     }
+
+    // Draw-offer banner
+    applyDrawBanner(state);
 
     // Game over
     if (state.over && state.ended && !serverEnded) {
@@ -231,6 +262,11 @@ function showEnded(state) {
         title = `${winner} wins on time`;
         sub = `${ended.loser[0].toUpperCase() + ended.loser.slice(1)} flag fell.`;
         icon = ended.loser === 'white' ? '♚' : '♔';
+    } else if (ended.kind === 'resignation') {
+        const winner = ended.loser === 'white' ? 'Black' : 'White';
+        title = `${winner} wins by resignation`;
+        sub = `${ended.loser[0].toUpperCase() + ended.loser.slice(1)} resigned.`;
+        icon = '🏳️';
     } else if (ended.kind === 'stalemate') { title = 'Stalemate'; icon = '½'; }
     else { title = 'Draw'; sub = ended.reason || ''; icon = '½'; }
     setStatus(title, '#ff3b30');
@@ -321,3 +357,46 @@ copyBtn.addEventListener('click', async () => {
     copyBtn.textContent = 'Copied!';
     setTimeout(() => copyBtn.textContent = 'Copy link', 1500);
 });
+
+// ============ Resign / Draw ============
+const resignBtn = $('resignBtn');
+const drawBtn   = $('drawBtn');
+const drawBanner   = $('drawBanner');
+const drawBannerTx = $('drawBannerText');
+const drawAccept   = $('drawAcceptBtn');
+const drawDecline  = $('drawDeclineBtn');
+
+resignBtn.addEventListener('click', () => {
+    if (!myColor || myColor === 'spectator') return;
+    if (!confirm('Resign this game?')) return;
+    socket.emit('resign', { code });
+});
+
+drawBtn.addEventListener('click', () => {
+    if (!myColor || myColor === 'spectator') return;
+    socket.emit('draw_offer', { code });
+    drawBtn.textContent = 'Offer sent…';
+    setTimeout(() => drawBtn.textContent = '½ Draw', 2000);
+});
+
+drawAccept.addEventListener('click',  () => socket.emit('draw_accept',  { code }));
+drawDecline.addEventListener('click', () => socket.emit('draw_decline', { code }));
+
+function applyDrawBanner(state) {
+    if (!state.pending_draw || state.over) {
+        drawBanner.style.display = 'none';
+        return;
+    }
+    if (state.pending_draw === myColor) {
+        drawBannerTx.textContent = 'Draw offer pending…';
+        drawAccept.style.display  = 'none';
+        drawDecline.style.display = 'inline-flex';
+        drawDecline.textContent = 'Withdraw';
+    } else {
+        drawBannerTx.textContent = 'Opponent offers a draw.';
+        drawAccept.style.display  = 'inline-flex';
+        drawDecline.style.display = 'inline-flex';
+        drawDecline.textContent = 'Decline';
+    }
+    drawBanner.style.display = '';
+}

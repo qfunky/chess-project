@@ -35,6 +35,7 @@ class Room:
         self.over = False
         self.result = "*"
         self.ended_reason = None
+        self.pending_draw = None  # color of player who offered (white|black|None)
 
     # ---------- Seat management ----------
     def color_of_user(self, username):
@@ -142,6 +143,38 @@ class Room:
                 else:                          self.result = "1/2-1/2"
         return True
 
+    def resign(self, color):
+        if self.over: return False
+        if color not in ("white", "black"): return False
+        self.over = True
+        self.result = "0-1" if color == "white" else "1-0"
+        self.ended_reason = {"kind": "resignation", "loser": color}
+        self.pending_draw = None
+        return True
+
+    def offer_draw(self, color):
+        if self.over or color not in ("white", "black"): return False
+        # If opponent already offered, accept automatically (mutual offer)
+        if self.pending_draw and self.pending_draw != color:
+            return self.accept_draw(color)
+        self.pending_draw = color
+        return True
+
+    def accept_draw(self, color):
+        if self.over: return False
+        if not self.pending_draw or self.pending_draw == color: return False
+        self.over = True
+        self.result = "1/2-1/2"
+        self.ended_reason = {"kind": "draw", "reason": "agreement"}
+        self.pending_draw = None
+        return True
+
+    def decline_draw(self, color):
+        if self.pending_draw and self.pending_draw != color:
+            self.pending_draw = None
+            return True
+        return False
+
     def _native_end_reason(self):
         if self.board.is_checkmate():
             winner = "black" if self.board.turn == chess.WHITE else "white"
@@ -172,6 +205,7 @@ class Room:
             "last_move_at": self.last_move_at,
             "server_ts": self._now_ms(),
             "analysis_allowed": self.analysis_allowed,
+            "pending_draw": self.pending_draw,
             "result": self.result,
             "over": self.over,
             "ended": self.ended_reason if self.over else None,

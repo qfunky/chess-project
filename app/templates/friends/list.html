@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Friends{% endblock %}
+{% block css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/social.css') }}">{% endblock %}
+
+{% block content %}
+<div class="social-page">
+    <header class="social-head">
+        <div>
+            <h1>Friends</h1>
+            <p class="muted">People you play with. Invite by @username and share yours.</p>
+        </div>
+        <form method="post" action="{{ url_for('friends.send_request') }}" class="invite-form">
+            <input name="username" placeholder="Add @username" autocomplete="off" required>
+            <button class="btn-primary" type="submit">Send invite</button>
+        </form>
+    </header>
+
+    {% if incoming or outgoing %}
+    <section class="panel">
+        <div class="panel-head"><h2>Requests · {{ incoming|length + outgoing|length }}</h2></div>
+        <div class="panel-body">
+            {% for f in incoming %}
+            <div class="user-row">
+                <span class="avatar-initial">{{ f.requester.username[0]|upper }}</span>
+                <div class="who">
+                    <div class="name">{{ f.requester.display_name or f.requester.username }}</div>
+                    <div class="sub mono">@{{ f.requester.username }} · {{ f.requester.rating }} · wants to add you</div>
+                </div>
+                <form method="post" action="{{ url_for('friends.decline', fid=f.id) }}"><button class="btn-tiny">Decline</button></form>
+                <form method="post" action="{{ url_for('friends.accept',  fid=f.id) }}"><button class="btn-tiny primary">Accept</button></form>
+            </div>
+            {% endfor %}
+            {% for f in outgoing %}
+            <div class="user-row outgoing">
+                <span class="avatar-initial">{{ f.addressee.username[0]|upper }}</span>
+                <div class="who">
+                    <div class="name">{{ f.addressee.display_name or f.addressee.username }}</div>
+                    <div class="sub mono">@{{ f.addressee.username }} · invite sent</div>
+                </div>
+                <form method="post" action="{{ url_for('friends.decline', fid=f.id) }}"><button class="btn-tiny">Cancel</button></form>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="panel">
+        <div class="panel-head"><h2>All friends · {{ friends|length }}</h2></div>
+        <div class="panel-body">
+            {% if friends %}
+                {% for u, fid in friends %}
+                <div class="user-row">
+                    <span class="avatar-initial">{{ u.username[0]|upper }}</span>
+                    <div class="who">
+                        <a class="name" href="{{ url_for('profile.view', username=u.username) }}">
+                            {{ u.display_name or u.username }}
+                        </a>
+                        <div class="sub mono">@{{ u.username }} · {{ u.rating }}{% if u.country %} · {{ u.country }}{% endif %}</div>
+                    </div>
+                    <a class="btn-tiny" href="{{ url_for('profile.view', username=u.username) }}">View</a>
+                    <form method="post" action="{{ url_for('friends.remove', fid=fid) }}" onsubmit="return confirm('Remove @{{ u.username }}?');">
+                        <button class="btn-tiny danger" type="submit">Remove</button>
+                    </form>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-row">No friends yet. Invite someone with their @username.</div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}

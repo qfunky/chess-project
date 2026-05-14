@@ -26,8 +26,9 @@
             {% if current_user.is_authenticated %}
                 <a href="{{ url_for('main.play') }}">Play</a>
                 <a href="{{ url_for('mp.lobby') }}">Multiplayer</a>
-                <a href="{{ url_for('games.list_games') }}">My Games</a>
-                <span class="user-chip">{{ current_user.username }}</span>
+                <a href="{{ url_for('games.list_games') }}">Games</a>
+                <a href="{{ url_for('friends.list_friends') }}">Friends</a>
+                <a href="{{ url_for('profile.me') }}" class="user-chip">@{{ current_user.username }}</a>
                 <a href="{{ url_for('auth.logout') }}" class="muted">Logout</a>
             {% else %}
                 <a href="{{ url_for('main.play') }}">Play</a>

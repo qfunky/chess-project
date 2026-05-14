@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Edit profile{% endblock %}
+{% block css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/social.css') }}">{% endblock %}
+
+{% block content %}
+<div class="social-page narrow">
+    <h1>Edit profile</h1>
+    <p class="muted">No avatar — just text.</p>
+    <form method="post" class="edit-form">
+        <label>
+            <span>Username</span>
+            <input name="username" value="{{ u.username }}" maxlength="24" pattern="[a-z0-9_]+" required>
+            <small>Lowercase letters, numbers, underscores.</small>
+        </label>
+        <label>
+            <span>Display name</span>
+            <input name="display_name" value="{{ u.display_name or '' }}" maxlength="64">
+        </label>
+        <label>
+            <span>Bio</span>
+            <textarea name="bio" maxlength="240" rows="3">{{ u.bio or '' }}</textarea>
+        </label>
+        <div class="row-2">
+            <label>
+                <span>Location</span>
+                <input name="country" value="{{ u.country or '' }}" maxlength="48">
+            </label>
+            <label>
+                <span>Title</span>
+                <input name="title" value="{{ u.title or '' }}" maxlength="8" placeholder="GM, IM, NM…">
+            </label>
+        </div>
+        <div class="actions">
+            <a class="btn-ghost" href="{{ url_for('profile.me') }}">Cancel</a>
+            <button class="btn-primary" type="submit">Save</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
