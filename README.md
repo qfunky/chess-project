@@ -95,10 +95,3 @@ Dockerfile
 docker-compose.yml
 k8s/deployment.yaml
 ```
-
-## What's not done (deferred by design)
-
-- Clocks (time control)
-- Live engine analysis in multiplayer rooms
-- Opponent reconnect with state recovery (currently they re-join cleanly, but the seat is taken until disconnect propagates)
-- Multi-replica room state — rooms are in-memory per replica. For true horizontal scaling, replace `app/multiplayer/rooms.py` with a Redis-backed store. With ingress cookie-affinity this works for moderate scale.
